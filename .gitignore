@@ -1,0 +1,23 @@
+# ===== Secrets / personal data =====
+.env
+answers.yaml
+applications.db
+src/main/resources/profile.json
+src/main/resources/resume.pdf
+*.pdf
+
+# ===== Build output =====
+target/
+
+# ===== IDE =====
+.idea/
+*.iml
+
+# ===== Logs / debug =====
+*.log
+run_log.txt
+debug_chatbot.txt
+
+# ===== OS =====
+Thumbs.db
+.DS_Store

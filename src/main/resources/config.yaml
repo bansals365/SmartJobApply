@@ -1,0 +1,65 @@
+run:
+  headless: false
+  manualCaptcha: true
+  daily_max_applications: 50
+  random_delay_sec_min: 1.0
+  random_delay_sec_max: 2.5
+
+filters:
+  include_keywords: ["java", "spring boot", "spring", "backend", "j2ee", "microservice"]
+  exclude_keywords:
+    - "Accenture"
+    - "sales"
+    - "business development"
+    - "bde"
+    - "telecaller"
+    - "tele caller"
+    - "marketing"
+    - "field executive"
+    - "channel partner"
+    - "bpo"
+    - "call center"
+    - "call centre"
+    - "customer support"
+    - "customer care"
+    - "human resource"
+    - " hr "
+    - "recruitment"
+    - "talent acquisition"
+    - "front end"
+    - "frontend"
+    - "react developer"
+    - "angular developer"
+    - "android developer"
+    - "ios developer"
+    - "flutter developer"
+    - "php developer"
+    - "python developer"
+    - "data scientist"
+    #- "machine learning"
+    - "dot net"
+    - ".net developer"
+
+search:
+  keywords: ["Java Developer"]
+  location: ""
+
+site:
+  naukri:
+    max_scroll_pages: 5
+    easy_apply_only: true
+    min_experience: 3
+    preferred_locations:
+      - "gurugram"
+      - "gurgaon"
+      - "noida"
+      - "indore"
+      - "pune"
+      - "mumbai"
+      - "bangalore"
+      - "bengaluru"
+      - "hyderabad"
+  linkedin:
+    easy_apply_only: true
+    job_query: "Java Developer"
+    location: "India"

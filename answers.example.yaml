@@ -1,0 +1,28 @@
+# Copy this file to "answers.yaml" and fill in your own values.
+#   cp answers.example.yaml answers.yaml   (Linux/Mac)
+#   copy answers.example.yaml answers.yaml (Windows)
+# answers.yaml is gitignored, so your real values never get committed.
+
+# --- Salary (in LPA) ---
+current_ctc: "YOUR_CURRENT_CTC"
+expected_ctc: "YOUR_EXPECTED_CTC"
+
+# --- Location ---
+current_location: "YOUR_CURRENT_CITY"
+preferred_location: "YOUR_PREFERRED_CITY"
+
+# --- Education ---
+college: "YOUR_COLLEGE"
+passing_year: "YYYY"
+tenth_percentage: "00"
+twelfth_percentage: "00"
+cgpa: "0.0"
+
+# --- Current job ---
+current_company: "YOUR_COMPANY"
+current_designation: "YOUR_DESIGNATION"
+
+# --- Personal ---
+dob: "DD/MM/YYYY"
+gender: "YOUR_GENDER"
+marital_status: "YOUR_MARITAL_STATUS"

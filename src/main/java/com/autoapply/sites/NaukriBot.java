@@ -55,7 +55,7 @@ public class NaukriBot {
             // === Build search URL ===
             String kw = String.join(" ", cfg.getSearch().getKeywords()).toLowerCase().trim().replace(" ", "-");
             String loc = Optional.ofNullable(cfg.getSearch().getLocation()).filter(s -> !s.isEmpty()).orElse("india").toLowerCase().trim().replace(" ", "-");
-            String url = "https://www.naukri.com/" + kw + "-jobs-in-" + loc + "?jobAge=30";
+            String url = "https://www.naukri.com/" + kw + "-jobs-in-" + loc + "?jobAge=1";
             System.out.println("🔍 Search URL: " + url);
             driver.get(url);
             Utils.humanSleep(1.0, 1.5);

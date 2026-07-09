@@ -39,8 +39,13 @@ public class Utils {
 
     public static String getOption(String[] args, String key, String def){
         for (int i = 0; i < args.length; i++) {
+            // --key=value
             if (args[i].startsWith(key+"=")){
                 return args[i].substring((key+"=").length());
+            }
+            // --key value  (space separated)
+            if (args[i].equalsIgnoreCase(key) && i + 1 < args.length){
+                return args[i+1];
             }
         }
         return def;

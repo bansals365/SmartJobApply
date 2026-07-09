@@ -18,6 +18,14 @@ public class LinkedInEasyApply {
     private final DB db;
     public LinkedInEasyApply(Config cfg, DB db){ this.cfg = cfg; this.db = db; }
 
+    /** CSS selector se match karne wale elements me se pehla VISIBLE element lautata hai. */
+    private static WebElement firstDisplayed(WebDriver driver, String css){
+        for (WebElement el : driver.findElements(By.cssSelector(css))){
+            try { if (el.isDisplayed()) return el; } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
     public void run(){
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String email = dotenv.get("LINKEDIN_EMAIL");
@@ -34,9 +42,45 @@ public class LinkedInEasyApply {
         try {
             // login
             driver.get("https://www.linkedin.com/login");
-            driver.findElement(By.id("username")).sendKeys(email);
-            driver.findElement(By.id("password")).sendKeys(pass);
-            driver.findElement(By.xpath("//button[@type='submit']")).click();
+            try {
+                // LinkedIn ka naya login page randomized React ids deta hai (id="username" gayab),
+                // aur do layout (desktop+mobile) ke liye duplicate fields hote hain jisme ek hidden hai.
+                // Isliye 'type' se dhoondo aur jo VISIBLE ho wahi use karo.
+                new WebDriverWait(driver, Duration.ofSeconds(20))
+                        .until(ExpectedConditions.presenceOfElementLocated(
+                                By.cssSelector("input[type='email'], input#username")));
+                WebElement userField = firstDisplayed(driver, "input[type='email'], input#username");
+                WebElement passField = firstDisplayed(driver, "input[type='password'], input#password");
+                if (userField == null || passField == null)
+                    throw new NoSuchElementException("Visible email/password field nahi mila");
+                userField.click();
+                userField.sendKeys(email);
+                passField.sendKeys(pass);
+                Utils.humanSleep(0.5, 1.2);
+                WebElement submitBtn = firstDisplayed(driver, "button[type='submit']");
+                if (submitBtn != null) submitBtn.click();
+                else passField.sendKeys(Keys.RETURN);
+            } catch (Exception e) {
+                System.out.println("⚠️ Login field nahi mila. Current URL: " + driver.getCurrentUrl()
+                        + " | Title: " + driver.getTitle());
+                try {
+                    java.io.File shot = ((org.openqa.selenium.TakesScreenshot) driver)
+                            .getScreenshotAs(org.openqa.selenium.OutputType.FILE);
+                    java.nio.file.Files.copy(shot.toPath(),
+                            java.nio.file.Paths.get("li_login_debug.png"),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    System.out.println("📸 Screenshot saved: li_login_debug.png");
+                } catch (Exception ignored) {}
+                throw e;
+            }
+
+            // login ke baad page settle hone do; captcha/OTP aaye to manually solve karne ka mauka
+            Utils.humanSleep(3, 5);
+            if (driver.getCurrentUrl().contains("/checkpoint") || driver.getCurrentUrl().contains("/login")) {
+                System.out.println("⚠️ LinkedIn verification/captcha aaya lagta hai. Browser me manually solve karo,");
+                System.out.println("   phir yahan Enter dabao taaki bot aage badhe...");
+                new java.util.Scanner(System.in).nextLine();
+            }
             Utils.humanSleep(cfg.getRun().getRandom_delay_sec_min(), cfg.getRun().getRandom_delay_sec_max());
 
             // search with Easy Apply filter

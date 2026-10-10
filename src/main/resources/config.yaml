@@ -1,0 +1,88 @@
+run:
+  headless: false
+  manualCaptcha: true
+  daily_max_applications: 50
+  random_delay_sec_min: 1.0
+  random_delay_sec_max: 2.5
+
+filters:
+  include_keywords: ["java", "spring boot", "spring", "backend", "j2ee", "microservice"]
+  exclude_keywords:
+    - "Accenture"
+    - "sales"
+    - "business development"
+    - "bde"
+    - "telecaller"
+    - "tele caller"
+    - "marketing"
+    - "field executive"
+    - "channel partner"
+    - "bpo"
+    - "call center"
+    - "call centre"
+    - "customer support"
+    - "customer care"
+    - "human resource"
+    - " hr "
+    - "recruitment"
+    - "talent acquisition"
+    - "front end"
+    - "frontend"
+    - "react developer"
+    - "angular developer"
+    - "android developer"
+    - "ios developer"
+    - "flutter developer"
+    - "php"
+    - "laravel"
+    - "python developer"
+    - "data scientist"
+    - "machine learning"
+    - "ai/ml"
+    - "qa automat"
+    - "qa engineer"
+    - "tester"
+    - "sdet"
+    - "quality assurance"
+    - "test automation"
+    - "dot net"
+    - ".net developer"
+
+search:
+  keywords: ["Java Developer"]
+  location: ""
+
+site:
+  naukri:
+    max_scroll_pages: 5
+    easy_apply_only: true
+    min_experience: 3
+    preferred_locations:
+      - "gurugram"
+      - "gurgaon"
+      - "noida"
+      - "indore"
+      - "pune"
+      - "mumbai"
+      - "bangalore"
+      - "bengaluru"
+      - "hyderabad"
+  naukrigulf:
+    max_pages: 5
+    easy_apply_only: true
+    experience_years: 4
+    # Skip only jobs asking more than experience_years + tolerance (lower ones are kept)
+    experience_tolerance: 2
+    # Searched one by one, e.g. ["uae", "saudi-arabia"]; empty = all Gulf countries in one search
+    locations: []
+    # Each keyword is searched separately (falls back to search.keywords if empty)
+    keywords:
+      - "Java Developer"
+      - "Java Backend Developer"
+      - "Spring Boot Developer"
+      - "Java Software Engineer"
+      - "Java Full Stack Developer"
+  linkedin:
+    easy_apply_only: true
+    job_query: "Java Developer"
+    location: "India"

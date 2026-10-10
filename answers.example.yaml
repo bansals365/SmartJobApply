@@ -1,0 +1,41 @@
+# Copy this file to "answers.yaml" and fill in your own values.
+#   cp answers.example.yaml answers.yaml   (Linux/Mac)
+#   copy answers.example.yaml answers.yaml (Windows)
+# answers.yaml is gitignored, so your real values never get committed.
+
+# --- Salary (in LPA) ---
+current_ctc: "YOUR_CURRENT_CTC"
+expected_ctc: "YOUR_EXPECTED_CTC"
+
+# --- Location ---
+current_location: "YOUR_CURRENT_CITY"
+preferred_location: "YOUR_PREFERRED_CITY"
+
+# --- Education ---
+college: "YOUR_COLLEGE"
+passing_year: "YYYY"
+tenth_percentage: "00"
+twelfth_percentage: "00"
+cgpa: "0.0"
+
+# --- Current job ---
+current_company: "YOUR_COMPANY"
+current_designation: "YOUR_DESIGNATION"
+
+# --- Personal ---
+dob: "DD/MM/YYYY"
+gender: "YOUR_GENDER"
+marital_status: "YOUR_MARITAL_STATUS"
+
+# --- Naukri Gulf only ---
+gulf_current_salary: "YOUR_CURRENT_MONTHLY_SALARY"
+gulf_expected_salary_aed: "YOUR_EXPECTED_AED"       # expected monthly salary in AED
+visa_status: "Not in Gulf / Need Visa"   # e.g. "Visit Visa", "Employment Visa", "Need Visa"
+nationality: "Indian"
+driving_license: "No"
+gulf_experience_years: "0"
+current_salary_usd: "YOUR_CURRENT_USD"            # monthly, used when asked in $
+expected_salary_usd: "YOUR_EXPECTED_USD"
+
+# Answer for "describe / explain / tell us about your work" questions (max ~300 chars)
+profile_summary: "N+ yrs Java backend developer (Spring Boot, microservices, REST). Built ... at YOUR_COMPANY."

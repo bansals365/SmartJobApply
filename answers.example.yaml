@@ -26,3 +26,16 @@ current_designation: "YOUR_DESIGNATION"
 dob: "DD/MM/YYYY"
 gender: "YOUR_GENDER"
 marital_status: "YOUR_MARITAL_STATUS"
+
+# --- Naukri Gulf only ---
+gulf_current_salary: "YOUR_CURRENT_MONTHLY_SALARY"
+gulf_expected_salary_aed: "YOUR_EXPECTED_AED"       # expected monthly salary in AED
+visa_status: "Not in Gulf / Need Visa"   # e.g. "Visit Visa", "Employment Visa", "Need Visa"
+nationality: "Indian"
+driving_license: "No"
+gulf_experience_years: "0"
+current_salary_usd: "YOUR_CURRENT_USD"            # monthly, used when asked in $
+expected_salary_usd: "YOUR_EXPECTED_USD"
+
+# Answer for "describe / explain / tell us about your work" questions (max ~300 chars)
+profile_summary: "N+ yrs Java backend developer (Spring Boot, microservices, REST). Built ... at YOUR_COMPANY."

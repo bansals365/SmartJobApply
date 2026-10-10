@@ -17,6 +17,7 @@ target/
 *.log
 run_log.txt
 debug_chatbot.txt
+debug_gulf/
 
 # ===== OS =====
 Thumbs.db

@@ -21,6 +21,9 @@ mvn clean package
 # Run (Naukri)
 java -jar target/java-job-auto-apply-bot-1.0.0-jar-with-dependencies.jar --site=naukri --headful --manual-captcha
 
+# Run (Naukri Gulf) — needs NAUKRIGULF_EMAIL / NAUKRIGULF_PASSWORD in .env
+java -jar target/java-job-auto-apply-bot-1.0.0-jar-with-dependencies.jar --site=naukrigulf --headful --manual-captcha
+
 # Run (LinkedIn demo)
 java -jar target/java-job-auto-apply-bot-1.0.0-jar-with-dependencies.jar --site=linkedin --headful --manual-captcha
 ```

@@ -5,6 +5,7 @@ import com.autoapply.util.Utils;
 import com.autoapply.util.DB;
 import com.autoapply.sites.NaukriBot;
 import com.autoapply.sites.LinkedInEasyApply;
+import com.autoapply.sites.NaukriGulfBot;
 
 public class App {
     public static void main(String[] args) throws Exception {
@@ -23,7 +24,8 @@ public class App {
         switch (site) {
             case "naukri" -> new NaukriBot(cfg, db).run();
             case "linkedin" -> new LinkedInEasyApply(cfg, db).run();
-            default -> System.out.println("Unknown --site value. Use naukri or linkedin.");
+            case "naukrigulf" -> new NaukriGulfBot(cfg, db).run();
+            default -> System.out.println("Unknown --site value. Use naukri, naukrigulf or linkedin.");
         }
     }
 }

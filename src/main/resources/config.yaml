@@ -67,6 +67,21 @@ site:
       - "bangalore"
       - "bengaluru"
       - "hyderabad"
+  naukrigulf:
+    max_pages: 5
+    easy_apply_only: true
+    experience_years: 4
+    # Skip only jobs asking more than experience_years + tolerance (lower ones are kept)
+    experience_tolerance: 2
+    # Searched one by one, e.g. ["uae", "saudi-arabia"]; empty = all Gulf countries in one search
+    locations: []
+    # Each keyword is searched separately (falls back to search.keywords if empty)
+    keywords:
+      - "Java Developer"
+      - "Java Backend Developer"
+      - "Spring Boot Developer"
+      - "Java Software Engineer"
+      - "Java Full Stack Developer"
   linkedin:
     easy_apply_only: true
     job_query: "Java Developer"

@@ -93,10 +93,40 @@ public class Config {
                 this.location = location;
             }
         }
+        public static class NaukriGulf {
+            private int max_pages = 5;
+            private int experience_years = 4;
+            // Apply if the job's minimum is at most experience_years + this many years
+            private int experience_tolerance = 2;
+            // Gulf locations to search, e.g. "uae", "dubai", "saudi-arabia", "qatar".
+            // Empty list = search all Gulf locations.
+            private List<String> locations = new java.util.ArrayList<>();
+            // Skip cards without the "Easy Apply" tag (external / company-site jobs)
+            private boolean easy_apply_only = true;
+            public boolean isEasy_apply_only() { return easy_apply_only; }
+            public void setEasy_apply_only(boolean easy_apply_only) { this.easy_apply_only = easy_apply_only; }
+            // Searched one by one; empty = use search.keywords
+            private List<String> keywords = new java.util.ArrayList<>();
+
+            public List<String> getKeywords() { return keywords; }
+            public void setKeywords(List<String> keywords) { this.keywords = keywords; }
+            public int getMax_pages() { return max_pages; }
+            public int getExperience_years() { return experience_years; }
+            public int getExperience_tolerance() { return experience_tolerance; }
+            public List<String> getLocations() { return locations; }
+
+            public void setMax_pages(int max_pages) { this.max_pages = max_pages; }
+            public void setExperience_years(int experience_years) { this.experience_years = experience_years; }
+            public void setExperience_tolerance(int experience_tolerance) { this.experience_tolerance = experience_tolerance; }
+            public void setLocations(List<String> locations) { this.locations = locations; }
+        }
         private Naukri naukri;
         private LinkedIn linkedin;
+        private NaukriGulf naukrigulf = new NaukriGulf();
         public Naukri getNaukri() { return naukri; }
         public LinkedIn getLinkedin() { return linkedin; }
+        public NaukriGulf getNaukrigulf() { return naukrigulf; }
+        public void setNaukrigulf(NaukriGulf naukrigulf) { this.naukrigulf = naukrigulf; }
 
         public void setNaukri(Naukri naukri) {
             this.naukri = naukri;

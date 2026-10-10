@@ -225,6 +225,12 @@ public class NaukriBot {
                             Utils.humanSleep(cfg.getRun().getRandom_delay_sec_min(), cfg.getRun().getRandom_delay_sec_max());
 
                         } catch (Exception e) {
+                            // Dead browser session (Chrome closed/crashed/updated mid-run):
+                            // every further command will fail, so abort instead of spamming.
+                            if (isDeadSession(e)) {
+                                System.out.println("🛑 Browser session lost (invalid session id) — Chrome was closed, crashed, or updated mid-run. Aborting.");
+                                return;
+                            }
                             System.out.println("⚠️ Card error: " + e.getMessage());
                             // Recover to main tab if we somehow lost it
                             try {
@@ -237,12 +243,26 @@ public class NaukriBot {
                 }
 
             } catch (Exception e) {
-                System.out.println("❌ Pagination error: " + e.getMessage());
+                if (isDeadSession(e)) {
+                    System.out.println("🛑 Browser session lost (invalid session id) — Chrome was closed, crashed, or updated mid-run. Aborting.");
+                } else {
+                    System.out.println("❌ Pagination error: " + e.getMessage());
+                }
             }
 
         } finally {
-            driver.quit();
+            try { driver.quit(); } catch (Exception ignored) {}
         }
+    }
+
+    // A dead browser session (Chrome closed/crashed/updated mid-run) surfaces as
+    // NoSuchSessionException, or any WebDriverException whose message carries
+    // "invalid session id". Once it happens every subsequent command fails, so
+    // the run must abort rather than log the same error for every remaining card.
+    private boolean isDeadSession(Throwable e) {
+        if (e instanceof NoSuchSessionException) return true;
+        String msg = e.getMessage();
+        return msg != null && msg.toLowerCase().contains("invalid session id");
     }
 
     // Handles the chatbot Q&A. Returns true if application was submitted.

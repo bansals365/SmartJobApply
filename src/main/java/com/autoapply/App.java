@@ -15,6 +15,8 @@ public class App {
         if (Utils.hasFlag(args, "--headful")) cfg.getRun().setHeadless(false);
         if (Utils.hasFlag(args, "--headless")) cfg.getRun().setHeadless(true);
         if (Utils.hasFlag(args, "--manual-captcha")) cfg.getRun().setManualCaptcha(true);
+        String max = Utils.getOption(args, "--max", null);
+        if (max != null) cfg.getRun().setDaily_max_applications(Integer.parseInt(max));
 
         DB db = new DB("applications.db");
 

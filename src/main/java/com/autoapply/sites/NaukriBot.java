@@ -10,6 +10,8 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.NoSuchElementException;
@@ -33,12 +35,18 @@ public class NaukriBot {
         }
 
         WebDriver driver = Utils.newDriver(cfg.getRun().isHeadless());
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(8));
+        // No implicit wait: the bot probes many selectors that are legitimately
+        // absent (fallback company/JD/apply selectors, chatbot input types), and an
+        // implicit wait made every miss cost its full timeout — 30-60s per job.
+        // Places that really need to wait use explicit WebDriverWaits instead.
+        driver.manage().timeouts().implicitlyWait(Duration.ZERO);
 
         try {
             // === Login ===
             driver.get("https://www.naukri.com/nlogin/login");
-            driver.findElement(By.id("usernameField")).sendKeys(email);
+            new WebDriverWait(driver, Duration.ofSeconds(20))
+                    .until(ExpectedConditions.visibilityOfElementLocated(By.id("usernameField")))
+                    .sendKeys(email);
             driver.findElement(By.id("passwordField")).sendKeys(pass);
             driver.findElement(By.xpath("//button[contains(.,'Login')]")).click();
 
@@ -52,194 +60,179 @@ public class NaukriBot {
             }
             Utils.humanSleep(cfg.getRun().getRandom_delay_sec_min(), cfg.getRun().getRandom_delay_sec_max());
 
-            // === Build search URL ===
-            String kw = String.join(" ", cfg.getSearch().getKeywords()).toLowerCase().trim().replace(" ", "-");
-            String loc = Optional.ofNullable(cfg.getSearch().getLocation()).filter(s -> !s.isEmpty()).orElse("india").toLowerCase().trim().replace(" ", "-");
-            String url = "https://www.naukri.com/" + kw + "-jobs-in-" + loc + "?jobAge=1";
-            System.out.println("🔍 Search URL: " + url);
-            driver.get(url);
-            Utils.humanSleep(1.0, 1.5);
-
-            // === Experience Filter ===
-            try {
-                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
-                int targetYears = cfg.getSite().getNaukri().getMin_experience();
-
-                By expContainerBy = By.cssSelector("div[data-filter-id='experience']");
-                WebElement expContainer = wait.until(ExpectedConditions.presenceOfElementLocated(expContainerBy));
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", expContainer);
-
-                By railBy = By.cssSelector("div[data-filter-id='experience'] .rc-slider-rail");
-                By handleBy = By.cssSelector("div[data-filter-id='experience'] .rc-slider .handle");
-                By valueBy = By.cssSelector("div[data-filter-id='experience'] .handle .inside span");
-
-                WebElement rail = wait.until(ExpectedConditions.visibilityOfElementLocated(railBy));
-                WebElement handle = wait.until(ExpectedConditions.elementToBeClickable(handleBy));
-
-                int width = rail.getSize().getWidth();
-                int maxYears = 30;
-                int targetXFromLeft = (int) Math.round(width * (double) targetYears / (double) maxYears);
-                int xFromCenter = -(width / 2) + targetXFromLeft;
-
-                new org.openqa.selenium.interactions.Actions(driver)
-                        .moveToElement(rail, xFromCenter, 0)
-                        .click()
-                        .perform();
-
-                Utils.humanSleep(0.8, 1.2);
-
-                String shown = "";
-                try { shown = driver.findElement(valueBy).getText().trim(); } catch (Exception ignore) {}
-
-                if (!String.valueOf(targetYears).equals(shown)) {
-                    int railLeft = rail.getLocation().getX();
-                    int handleLeft = handle.getLocation().getX();
-                    int currentXFromLeft = handleLeft - railLeft;
-                    int delta = targetXFromLeft - currentXFromLeft;
-                    new org.openqa.selenium.interactions.Actions(driver)
-                            .clickAndHold(handle).moveByOffset(delta, 0).release().perform();
-                    Utils.humanSleep(0.6, 1.0);
-                    try { shown = driver.findElement(valueBy).getText().trim(); } catch (Exception ignore) {}
-                }
-                System.out.println("Experience filter set to: " + (shown.isEmpty() ? "unknown" : shown));
-
-            } catch (Exception e) {
-                System.out.println("⚠️ Could not set Experience filter: " + e.getMessage());
-            }
-
             // === Setup ===
             JDFilter filter = new JDFilter(cfg);
             int count = 0;
             int cap = cfg.getRun().getDaily_max_applications();
             int maxPages = cfg.getSite().getNaukri().getMax_scroll_pages();
+            int minExp = cfg.getSite().getNaukri().getMin_experience();
+            String loc = Optional.ofNullable(cfg.getSearch().getLocation()).orElse("").toLowerCase().trim();
+            String locSlug = loc.isEmpty() ? "" : "-in-" + loc.replaceAll("\\s+", "-");
 
-            // === Pagination Loop ===
+            // === Search + pagination, driven entirely by URL ===
+            // Keyword, experience and page number go into the URL instead of dragging
+            // the experience slider and clicking page links — the clicks drifted into
+            // unrelated results (pages full of "Sales Executive" for a Java search).
             try {
-                int page = 0;
-                while (page < maxPages) {
-                    WebElement paginationDiv = driver.findElement(By.cssSelector("div.styles_pages__v1rAK"));
-                    List<WebElement> pageLinks = paginationDiv.findElements(By.tagName("a"));
+                for (String keyword : cfg.getSearch().getKeywords()) {
+                    String kwSlug = keyword.toLowerCase().trim().replaceAll("\\s+", "-");
+                    String query = "?k=" + URLEncoder.encode(keyword, StandardCharsets.UTF_8)
+                            + (loc.isEmpty() ? "" : "&l=" + URLEncoder.encode(loc, StandardCharsets.UTF_8))
+                            + "&experience=" + minExp + "&jobAge=" + cfg.getSite().getNaukri().getJob_age_days();
 
-                    if (page >= pageLinks.size()) {
-                        System.out.println("✅ No more pages.");
-                        break;
-                    }
+                    for (int page = 1; page <= maxPages; page++) {
+                        String url = "https://www.naukri.com/" + kwSlug + "-jobs" + locSlug + (page > 1 ? "-" + page : "") + query;
+                        driver.get(url);
+                        System.out.println("➡️ [" + keyword + "] Page " + page + ": " + url);
 
-                    try {
-                        WebElement pageLink = pageLinks.get(page);
-                        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", pageLink);
-                        Utils.humanSleep(0.5, 1.0);
-                        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", pageLink);
-                        Utils.humanSleep(1.5, 2.0);
-                        System.out.println("➡️ Page " + (page + 1));
-                    } catch (Exception e) {
-                        System.out.println("❌ Page click failed: " + e.getMessage());
-                        break;
-                    }
-
-                    // === Job Cards Loop ===
-                    List<WebElement> cards = driver.findElements(By.cssSelector("div.srp-jobtuple-wrapper"));
-                    System.out.println("📌 Cards on page: " + cards.size());
-
-                    for (WebElement card : cards) {
-                        if (count >= cap) {
-                            System.out.println("Reached daily max: " + cap);
-                            return;
-                        }
+                        // === Job Cards Loop ===
+                        List<WebElement> cards;
                         try {
-                            List<WebElement> titleLinks = card.findElements(By.cssSelector("a.title"));
-                            if (titleLinks.isEmpty()) continue;
+                            cards = new WebDriverWait(driver, Duration.ofSeconds(10)).until(
+                                    ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("div.srp-jobtuple-wrapper")));
+                        } catch (TimeoutException e) {
+                            cards = List.of();
+                        }
+                        Utils.humanSleep(0.8, 1.2);
+                        System.out.println("📌 Cards on page: " + cards.size());
+                        if (cards.isEmpty()) {
+                            System.out.println("✅ No more results for: " + keyword);
+                            break;
+                        }
+                        // Naukri pads thin result sets with unrelated jobs (Sales Executive,
+                        // ...). Once a whole page has no relevant title, later pages won't either.
+                        boolean anyRelevant = cards.stream().anyMatch(c -> c.findElements(By.cssSelector("a.title")).stream()
+                                .anyMatch(a -> filter.titleHasInclude(a.getText())));
+                        if (!anyRelevant) {
+                            System.out.println("✅ No relevant jobs left for: " + keyword);
+                            break;
+                        }
 
-                            WebElement titleA = titleLinks.get(0);
-                            String title = titleA.getText();
-                            String link = titleA.getAttribute("href");
-                            String company = "";
-                            try { company = card.findElement(By.cssSelector(".subTitle.ellipsis.fleft")).getText(); } catch (Exception ignored) {}
-
-                            // Skip already-processed jobs (debug mode re-opens them to capture DOM)
-                            if (!DEBUG_CHATBOT && db.exists(link)) {
-                                System.out.println("⏭️ Already processed: " + title);
-                                continue;
-                            }
-
-                            // Title pre-filter — avoid opening irrelevant tabs at all
-                            if (!filter.titleAllowed(title)) {
-                                System.out.println("⏭️ Title blocked: " + title);
-                                db.upsert("naukri", link, title, company, "", "skipped", "title-filter");
-                                continue;
-                            }
-
-                            ((JavascriptExecutor) driver).executeScript("window.open(arguments[0], '_blank');", link);
-                            ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
-                            driver.switchTo().window(tabs.get(tabs.size() - 1));
-                            Utils.humanSleep(1.0, 1.5);
-
-                            // Extract JD from specific section, not entire body (avoids sidebar noise)
-                            String jdText = "";
-                            String[] jdSelectors = {".job-desc", "#job-desc", "[class*='jd-desc']", "[class*='job-desc']", ".dang-inner-html"};
-                            for (String sel : jdSelectors) {
-                                try {
-                                    jdText = driver.findElement(By.cssSelector(sel)).getText();
-                                    if (!jdText.isEmpty()) break;
-                                } catch (Exception ignored) {}
-                            }
-                            if (jdText.isEmpty()) {
-                                try { jdText = driver.findElement(By.cssSelector("body")).getText(); } catch (Exception ignored) {}
-                            }
-
-                            if (!filter.titleHasInclude(title) && !filter.shouldApply(title, jdText)) {
-                                System.out.println("⏭️ JD filter skip: " + title);
-                                db.upsert("naukri", link, title, company, "", "skipped", "filter");
-                                driver.close();
-                                driver.switchTo().window(tabs.get(0));
-                                continue;
-                            }
-
-                            // === Easy Apply ===
-                            boolean applied = false;
-                            try {
-                                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-                                By applyBy = findApplyButton(driver);
-                                if (applyBy == null) throw new Exception("No easy apply button found");
-                                WebElement applyBtn = wait.until(ExpectedConditions.elementToBeClickable(applyBy));
-                                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", applyBtn);
-                                applyBtn.click();
-                                Utils.humanSleep(1.5, 2.0);
-
-                                applied = runChatbot(driver, wait);
-
-                            } catch (Exception e) {
-                                System.out.println("❌ Easy Apply not found: " + e.getMessage());
-                            }
-
-                            if (applied) {
-                                db.upsert("naukri", link, title, company, "", "applied", "");
-                                count++;
-                                System.out.println("✅ Applied (" + count + "/" + cap + "): " + title + " @ " + company);
-                            } else {
-                                db.upsert("naukri", link, title, company, "", "skipped", "no-apply-button");
-                            }
-
-                            driver.close();
-                            driver.switchTo().window(tabs.get(0));
-                            Utils.humanSleep(cfg.getRun().getRandom_delay_sec_min(), cfg.getRun().getRandom_delay_sec_max());
-
-                        } catch (Exception e) {
-                            // Dead browser session (Chrome closed/crashed/updated mid-run):
-                            // every further command will fail, so abort instead of spamming.
-                            if (isDeadSession(e)) {
-                                System.out.println("🛑 Browser session lost (invalid session id) — Chrome was closed, crashed, or updated mid-run. Aborting.");
+                        for (WebElement card : cards) {
+                            if (count >= cap) {
+                                System.out.println("Reached daily max: " + cap);
                                 return;
                             }
-                            System.out.println("⚠️ Card error: " + e.getMessage());
-                            // Recover to main tab if we somehow lost it
                             try {
+                                List<WebElement> titleLinks = card.findElements(By.cssSelector("a.title"));
+                                if (titleLinks.isEmpty()) continue;
+
+                                WebElement titleA = titleLinks.get(0);
+                                String title = titleA.getText();
+                                String link = titleA.getAttribute("href");
+                                String company = "";
+                                for (String sel : new String[]{"a.comp-name", ".comp-name", "[class*='comp-name']", ".subTitle"}) {
+                                    List<WebElement> c = card.findElements(By.cssSelector(sel));
+                                    if (!c.isEmpty() && !c.get(0).getText().isBlank()) { company = c.get(0).getText().trim(); break; }
+                                }
+                                if (company.isEmpty()) {
+                                    // Card text is "title\ncompany\nrating..." — take the line after the title
+                                    String[] lines = card.getText().split("\\R");
+                                    if (lines.length > 1) company = lines[1].trim();
+                                }
+
+                                // Skip already-processed jobs (debug mode re-opens them to capture DOM)
+                                if (!DEBUG_CHATBOT && db.exists(link)) {
+                                    System.out.println("⏭️ Already processed: " + title);
+                                    continue;
+                                }
+
+                                // Title pre-filter — avoid opening irrelevant tabs at all
+                                if (!filter.titleAllowed(title)) {
+                                    System.out.println("⏭️ Title blocked: " + title);
+                                    db.upsert("naukri", link, title, company, "", "skipped", "title-filter");
+                                    continue;
+                                }
+                                if (!filter.companyAllowed(company)) {
+                                    System.out.println("⏭️ Company blocked: " + title + " @ " + company);
+                                    db.upsert("naukri", link, title, company, "", "skipped", "company-filter");
+                                    continue;
+                                }
+
+                                ((JavascriptExecutor) driver).executeScript("window.open(arguments[0], '_blank');", link);
                                 ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
-                                if (tabs.size() > 1) { driver.close(); driver.switchTo().window(tabs.get(0)); }
-                            } catch (Exception ignored) {}
+                                driver.switchTo().window(tabs.get(tabs.size() - 1));
+                                // Wait for the job page to render its apply control or JD
+                                try {
+                                    new WebDriverWait(driver, Duration.ofSeconds(12)).until(d -> !d.findElements(By.cssSelector(
+                                            "#apply-button, #company-site-button, [class*='apply-button'], .job-desc, [class*='job-desc'], .dang-inner-html")).isEmpty());
+                                } catch (TimeoutException e) {
+                                    System.out.println("⚠️ Job page slow to load: " + title);
+                                }
+                                Utils.humanSleep(0.5, 0.8);
+
+                                // Extract JD from specific section, not entire body (avoids sidebar noise)
+                                String jdText = "";
+                                String[] jdSelectors = {".job-desc", "#job-desc", "[class*='jd-desc']", "[class*='job-desc']", ".dang-inner-html"};
+                                for (String sel : jdSelectors) {
+                                    try {
+                                        jdText = driver.findElement(By.cssSelector(sel)).getText();
+                                        if (!jdText.isEmpty()) break;
+                                    } catch (Exception ignored) {}
+                                }
+                                if (jdText.isEmpty()) {
+                                    try { jdText = driver.findElement(By.cssSelector("body")).getText(); } catch (Exception ignored) {}
+                                }
+
+                                if (!filter.titleHasInclude(title) && !filter.shouldApply(title, jdText)) {
+                                    System.out.println("⏭️ JD filter skip: " + title);
+                                    db.upsert("naukri", link, title, company, "", "skipped", "filter");
+                                    driver.close();
+                                    driver.switchTo().window(tabs.get(0));
+                                    continue;
+                                }
+
+                                // === Easy Apply ===
+                                boolean applied = false;
+                                String skipReason = "chatbot-incomplete";
+                                try {
+                                    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+                                    By applyBy = findApplyButton(driver);
+                                    if (applyBy == null) {
+                                        skipReason = isExternalApply(driver) ? "external-apply" : "no-apply-button";
+                                        throw new Exception(skipReason.equals("external-apply")
+                                                ? "apply on company site (external)" : "No easy apply button found");
+                                    }
+                                    WebElement applyBtn = wait.until(ExpectedConditions.elementToBeClickable(applyBy));
+                                    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", applyBtn);
+                                    applyBtn.click();
+                                    Utils.humanSleep(1.5, 2.0);
+
+                                    applied = runChatbot(driver, wait);
+
+                                } catch (Exception e) {
+                                    System.out.println("❌ Easy Apply not found: " + e.getMessage());
+                                }
+
+                                if (applied) {
+                                    db.upsert("naukri", link, title, company, "", "applied", "");
+                                    count++;
+                                    System.out.println("✅ Applied (" + count + "/" + cap + "): " + title + " @ " + company);
+                                } else {
+                                    db.upsert("naukri", link, title, company, "", "skipped", skipReason);
+                                    System.out.println("⏭️ Not applied (" + skipReason + "): " + title + " @ " + company);
+                                }
+
+                                driver.close();
+                                driver.switchTo().window(tabs.get(0));
+                                Utils.humanSleep(cfg.getRun().getRandom_delay_sec_min(), cfg.getRun().getRandom_delay_sec_max());
+
+                            } catch (Exception e) {
+                                // Dead browser session (Chrome closed/crashed/updated mid-run):
+                                // every further command will fail, so abort instead of spamming.
+                                if (isDeadSession(e)) {
+                                    System.out.println("🛑 Browser session lost (invalid session id) — Chrome was closed, crashed, or updated mid-run. Aborting.");
+                                    return;
+                                }
+                                System.out.println("⚠️ Card error: " + e.getMessage());
+                                // Recover to main tab if we somehow lost it
+                                try {
+                                    ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
+                                    if (tabs.size() > 1) { driver.close(); driver.switchTo().window(tabs.get(0)); }
+                                } catch (Exception ignored) {}
+                            }
                         }
                     }
-                    page++;
                 }
 
             } catch (Exception e) {
@@ -264,6 +257,14 @@ public class NaukriBot {
         String msg = e.getMessage();
         return msg != null && msg.toLowerCase().contains("invalid session id");
     }
+
+    // Every kind of answer control the chatbot renders (union of the selectors used below)
+    private static final String CHATBOT_INPUTS =
+            "[class*='chatbot'] input[type='checkbox'], [class*='Chatbot'] input[type='checkbox'], "
+            + "[class*='chatbot'] input[type='radio'], [class*='Chatbot'] input[type='radio'], "
+            + ".suggestedReplies button, .chatbot_Options button, [class*='optionItem'] button, [class*='botButton'], [class*='chatbot'] li button, "
+            + "div[contenteditable='true'].textArea, "
+            + "[class*='chatbot'] input[type='text'], [class*='Chatbot'] input[type='text'], input[placeholder*='message'], input[placeholder*='Message']";
 
     // Handles the chatbot Q&A. Returns true if application was submitted.
     private boolean runChatbot(WebDriver driver, WebDriverWait wait) {
@@ -309,8 +310,7 @@ public class NaukriBot {
                 // Skip intro/greeting messages but don't loop forever on them
                 boolean isIntro = lower.startsWith("hi ") || lower.startsWith("hello ") ||
                         lower.contains("thank you for showing interest") ||
-                        lower.contains("answer all the recruiter's questions") ||
-                        lower.contains("please answer");
+                        lower.contains("answer all the recruiter's questions") ||                        lower.contains("please answer");
                 if (isIntro) {
                     if (labelText.equals(lastBotMsg)) { staleTick++; if (staleTick > 5) break; }
                     lastBotMsg = labelText;
@@ -334,7 +334,14 @@ public class NaukriBot {
                     return false;
                 }
 
+                // The question bubble can render before its answer controls — wait briefly for them
+                try {
+                    new WebDriverWait(driver, Duration.ofSeconds(3))
+                            .until(d -> !d.findElements(By.cssSelector(CHATBOT_INPUTS)).isEmpty());
+                } catch (TimeoutException ignored) {}
+
                 String answer = NaukriAnswers.getAnswer(labelText);
+                System.out.println("❓ Q: " + labelText.replaceAll("\\s+", " ") + " → " + answer);
 
                 // 1. Checkbox options — either a Yes/No skill question or a city multi-select.
                 List<WebElement> checkboxes = driver.findElements(
@@ -382,26 +389,29 @@ public class NaukriBot {
                             }
                         }
                     } else {
-                        // City / multi-select question — match preferred locations. Guard
-                        // against tiny labels (e.g. "no") matching a city substring.
-                        List<String> preferred = cfg.getSite().getNaukri().getPreferred_locations();
-                        for (String pref : preferred) {
-                            for (WebElement cb : checkboxes) {
-                                String lbl = getRadioLabel(driver, cb).toLowerCase().trim();
-                                if (lbl.contains("skip") || lbl.length() < 4) continue;
-                                if (lbl.contains(pref) || pref.contains(lbl)) {
-                                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", cb);
-                                    System.out.println("☑️ Selected: " + getRadioLabel(driver, cb));
-                                    anyChecked = true;
-                                    Utils.humanSleep(0.2, 0.4);
-                                }
+                        // Multi-select question. City lists match preferred locations;
+                        // anything else (skills, tools, ...) matches the answer text or
+                        // the include keywords. Guard against tiny labels (e.g. "no")
+                        // matching a substring.
+                        List<String> wanted = new ArrayList<>(cfg.getSite().getNaukri().getPreferred_locations());
+                        wanted.addAll(cfg.getFilters().getInclude_keywords());
+                        for (WebElement cb : checkboxes) {
+                            String lbl = getRadioLabel(driver, cb).toLowerCase().trim();
+                            if (lbl.contains("skip") || lbl.length() < 3) continue;
+                            boolean match = ans.matches(".*\\b" + java.util.regex.Pattern.quote(lbl) + "\\b.*")
+                                    || wanted.stream().anyMatch(w -> lbl.contains(w) || (lbl.length() >= 4 && w.contains(lbl)));
+                            if (match) {
+                                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", cb);
+                                System.out.println("☑️ Selected: " + getRadioLabel(driver, cb));
+                                anyChecked = true;
+                                Utils.humanSleep(0.2, 0.4);
                             }
                         }
                     }
 
                     if (!anyChecked && skipCheckbox != null) {
                         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", skipCheckbox);
-                        System.out.println("⏭️ No match available, skipping");
+                        System.out.println("⏭️ No match available, skipping. Options: " + optionLabels(driver, checkboxes));
                     } else if (!anyChecked && firstOption != null) {
                         // No skip and nothing matched — pick the first real option so the
                         // Save control enables and the application can still progress.
@@ -422,6 +432,7 @@ public class NaukriBot {
                 );
                 if (!radioInputs.isEmpty()) {
                     WebElement bestRadio = pickBestRadio(driver, radioInputs, answer);
+                    System.out.println("🔘 Selected: " + getRadioLabel(driver, bestRadio) + "  (options: " + optionLabels(driver, radioInputs) + ")");
                     // Select + fire change/input so Naukri enables the Save control.
                     ((JavascriptExecutor) driver).executeScript(
                         "arguments[0].scrollIntoView({block:'center'});" +
@@ -452,7 +463,9 @@ public class NaukriBot {
                 }
 
                 // 4. Text input — contenteditable div (.textArea)
-                List<WebElement> inputs = driver.findElements(By.cssSelector("div[contenteditable='true'].textArea"));
+                // Only visible boxes — a hidden one exists before the question needs it
+                List<WebElement> inputs = new ArrayList<>(driver.findElements(By.cssSelector("div[contenteditable='true'].textArea")));
+                inputs.removeIf(e -> !e.isDisplayed());
                 if (!inputs.isEmpty()) {
                     WebElement inputBox = inputs.get(0);
                     ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", inputBox);
@@ -469,9 +482,10 @@ public class NaukriBot {
                 }
 
                 // 5. Regular text input (e.g. notice period field)
-                List<WebElement> regularInputs = driver.findElements(
+                List<WebElement> regularInputs = new ArrayList<>(driver.findElements(
                         By.cssSelector("[class*='chatbot'] input[type='text'], [class*='Chatbot'] input[type='text'], input[placeholder*='message'], input[placeholder*='Message']")
-                );
+                ));
+                regularInputs.removeIf(e -> !e.isDisplayed());
                 if (!regularInputs.isEmpty()) {
                     WebElement inputBox = regularInputs.get(0);
                     ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", inputBox);
@@ -488,6 +502,12 @@ public class NaukriBot {
 
             } catch (StaleElementReferenceException e) {
                 staleTick = 0;
+            } catch (ElementNotInteractableException e) {
+                // Control rendered but not usable yet — re-answer the same question next pass
+                // instead of abandoning the application (the loop's iteration cap bounds retries).
+                System.out.println("⏳ Answer control not interactable yet, retrying");
+                lastBotMsg = "";
+                Utils.humanSleep(0.8, 1.2);
             } catch (TimeoutException | NoSuchElementException e) {
                 break;
             }
@@ -497,6 +517,10 @@ public class NaukriBot {
         // actually submitted are: (1) the saveApply confirmation page, or
         // (2) the apply button flipping to Applied/Withdraw. A bare "job URL"
         // is NOT proof — that used to mark un-submitted jobs as applied.
+        // Give the post-submit redirect to saveApply a moment to happen.
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(6)).until(d -> isApplyConfirmed(d));
+        } catch (Exception ignored) {}
         try {
             if (isApplyConfirmed(driver)) {
                 System.out.println("🔎 Verify: saveApply confirmation page → applied=true");
@@ -541,6 +565,18 @@ public class NaukriBot {
         return false;
     }
 
+    // Jobs that redirect to the employer's own site have an "Apply on company
+    // site" button instead of the Naukri chatbot — nothing to automate there.
+    private boolean isExternalApply(WebDriver driver) {
+        try {
+            return !driver.findElements(By.xpath(
+                "//button[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'company site')]"
+                + " | //*[@id='company-site-button']")).isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // Try multiple selectors to find the Apply button (Naukri UI changes frequently)
     private By findApplyButton(WebDriver driver) {
         String[] selectors = {
@@ -567,12 +603,21 @@ public class NaukriBot {
         return null; // fast fail — caller will skip this job immediately
     }
 
-    // Pick the radio input whose label best matches the answer
+    // Pick the radio input whose label best matches the answer. Notice-period
+    // options ("1 Month", "3 months", "90 days") are normalised to "N days" first.
+    // Word-boundary matching so "no" doesn't hit "noida"/"not", and empty labels
+    // (not rendered yet) never match everything.
     private WebElement pickBestRadio(WebDriver driver, List<WebElement> radios, String answer) {
-        String ans = answer.toLowerCase().trim();
+        String ans = NaukriAnswers.normalizePeriod(answer.toLowerCase().trim());
         for (WebElement radio : radios) {
-            String labelText = getRadioLabel(driver, radio).toLowerCase();
-            if (labelText.equals(ans) || ans.contains(labelText) || labelText.contains(ans)) return radio;
+            String labelText = NaukriAnswers.normalizePeriod(getRadioLabel(driver, radio).toLowerCase().trim());
+            if (labelText.equals(ans)) return radio;
+        }
+        for (WebElement radio : radios) {
+            String labelText = NaukriAnswers.normalizePeriod(getRadioLabel(driver, radio).toLowerCase().trim());
+            if (labelText.length() < 2) continue;
+            if (labelText.matches(".*\\b" + java.util.regex.Pattern.quote(ans) + "\\b.*")
+                    || ans.matches(".*\\b" + java.util.regex.Pattern.quote(labelText) + "\\b.*")) return radio;
         }
         // Yes/No fallback
         if (ans.startsWith("yes")) {
@@ -582,6 +627,12 @@ public class NaukriBot {
             for (WebElement r : radios) if (getRadioLabel(driver, r).toLowerCase().startsWith("no")) return r;
         }
         return radios.get(0);
+    }
+
+    private String optionLabels(WebDriver driver, List<WebElement> inputs) {
+        List<String> labels = new ArrayList<>();
+        for (WebElement in : inputs) labels.add(getRadioLabel(driver, in));
+        return String.join(" | ", labels);
     }
 
     private String getRadioLabel(WebDriver driver, WebElement radio) {

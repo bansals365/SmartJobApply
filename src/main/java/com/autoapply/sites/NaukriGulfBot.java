@@ -2,6 +2,7 @@ package com.autoapply.sites;
 
 import com.autoapply.services.GulfAnswers;
 import com.autoapply.services.JDFilter;
+import com.autoapply.services.NaukriAnswers;
 import com.autoapply.util.Config;
 import com.autoapply.util.DB;
 import com.autoapply.util.Utils;
@@ -542,12 +543,8 @@ public class NaukriGulfBot {
         }
     }
 
-    // Notice-period options come as "30 days", "1 Month", "One month", ... — map
-    // them to a common "N days" form so the answer matches whichever is offered.
     private static String normalizePeriod(String s) {
-        return s.replaceAll("\\b(1|one)\\s*months?\\b", "30 days")
-                .replaceAll("\\b(2|two)\\s*months?\\b", "60 days")
-                .replaceAll("\\b(3|three)\\s*months?\\b", "90 days");
+        return NaukriAnswers.normalizePeriod(s);
     }
 
     private WebElement pickOption(WebDriver driver, List<WebElement> options, String answer) {

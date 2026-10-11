@@ -22,6 +22,12 @@ public class GulfAnswers {
                     "Java backend developer experienced in Spring Boot, microservices, REST APIs and SQL databases.");
         }
 
+        // === Contact / notice period — before the salary and "join in" relocation rules ===
+        String contact = NaukriAnswers.contactAnswer(q);
+        if (contact != null) return contact;
+        String notice = NaukriAnswers.noticeAnswer(q);
+        if (notice != null) return notice;
+
         // === Salary asked in INR / LPA — answer with the Indian CTC values ===
         // Whole-word match so "lac" doesn't hit "place", "rs" doesn't hit "years"
         boolean inr = q.contains("₹") || q.matches(".*\\b(inr|lpa|lakhs?|lacs?|rupees?|rs)\\b.*");

@@ -18,6 +18,13 @@ public class JDFilter {
         return !excluded;
     }
 
+    public boolean companyAllowed(String company) {
+        if (company == null || company.isBlank()) return true;
+        String c = company.toLowerCase(Locale.ROOT);
+        return cfg.getFilters().getExclude_companies().stream()
+                .noneMatch(k -> c.contains(k.toLowerCase(Locale.ROOT)));
+    }
+
     public boolean titleHasInclude(String title) {
         if (title == null) return false;
         String t = title.toLowerCase(Locale.ROOT);

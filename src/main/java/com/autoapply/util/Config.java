@@ -31,8 +31,11 @@ public class Config {
     public static class Filters {
         private List<String> include_keywords;
         private List<String> exclude_keywords;
+        private List<String> exclude_companies = new java.util.ArrayList<>();
         public List<String> getInclude_keywords() { return include_keywords; }
         public List<String> getExclude_keywords() { return exclude_keywords; }
+        public List<String> getExclude_companies() { return exclude_companies; }
+        public void setExclude_companies(List<String> exclude_companies) { this.exclude_companies = exclude_companies; }
 
         public void setInclude_keywords(List<String> include_keywords) {
             this.include_keywords = include_keywords;
@@ -61,16 +64,19 @@ public class Config {
             private int max_scroll_pages;
             private boolean easy_apply_only;
             private int min_experience = 3;
+            private int job_age_days = 3;
             private List<String> preferred_locations = new java.util.ArrayList<>();
 
             public int getMax_scroll_pages() { return max_scroll_pages; }
             public boolean isEasy_apply_only() { return easy_apply_only; }
             public int getMin_experience() { return min_experience; }
+            public int getJob_age_days() { return job_age_days; }
             public List<String> getPreferred_locations() { return preferred_locations; }
 
             public void setMax_scroll_pages(int max_scroll_pages) { this.max_scroll_pages = max_scroll_pages; }
             public void setEasy_apply_only(boolean easy_apply_only) { this.easy_apply_only = easy_apply_only; }
             public void setMin_experience(int min_experience) { this.min_experience = min_experience; }
+            public void setJob_age_days(int job_age_days) { this.job_age_days = job_age_days; }
             public void setPreferred_locations(List<String> preferred_locations) { this.preferred_locations = preferred_locations; }
         }
         public static class LinkedIn {

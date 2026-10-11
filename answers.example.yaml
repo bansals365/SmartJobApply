@@ -14,6 +14,7 @@ preferred_location: "YOUR_PREFERRED_CITY"
 # --- Education ---
 college: "YOUR_COLLEGE"
 passing_year: "YYYY"
+highest_qualification: "B.Tech in Computer Science"
 tenth_percentage: "00"
 twelfth_percentage: "00"
 cgpa: "0.0"
@@ -27,6 +28,12 @@ dob: "DD/MM/YYYY"
 gender: "YOUR_GENDER"
 marital_status: "YOUR_MARITAL_STATUS"
 
+# --- Notice period / contact ---
+notice_period_days: "30"                 # 0 = immediate joiner
+country_code: "+91"
+mobile: "YOUR_10_DIGIT_MOBILE"
+past_companies: ""                       # comma-separated earlier employers, e.g. "TCS, Infosys"
+
 # --- Naukri Gulf only ---
 gulf_current_salary: "YOUR_CURRENT_MONTHLY_SALARY"
 gulf_expected_salary_aed: "YOUR_EXPECTED_AED"       # expected monthly salary in AED
@@ -39,3 +46,12 @@ expected_salary_usd: "YOUR_EXPECTED_USD"
 
 # Answer for "describe / explain / tell us about your work" questions (max ~300 chars)
 profile_summary: "N+ yrs Java backend developer (Spring Boot, microservices, REST). Built ... at YOUR_COMPANY."
+
+# --- Identity / skills / relocation ---
+full_name: "YOUR_FULL_NAME"
+email: "YOUR_ALTERNATE_EMAIL"
+total_experience_years: "4"
+skill_years: ""                # extra "skill:years" pairs, e.g. "kafka:2, redis:2"
+unknown_skill_years: ""        # years for unlisted skills; empty = total experience, "0" = "No experience"
+relocation_cities: ""          # empty = relocate anywhere; else comma-separated cities
+f2f_interview: "Yes"           # face-to-face / walk-in interview availability
